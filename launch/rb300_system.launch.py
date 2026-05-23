@@ -60,18 +60,6 @@ def generate_launch_description():
         output='screen'
     )
 
-    # Odometry Publisher
-    odometry_publisher = Node(
-        package='rb300_webui',
-        executable='odometry_publisher',
-        parameters=[{
-            'wheel_radius': LaunchConfiguration('wheel_radius'),
-            'wheel_separation': LaunchConfiguration('wheel_separation'),
-            'publish_rate': LaunchConfiguration('odometry_publish_rate'),
-        }],
-        output='screen'
-    )
-
     # System Monitor
     system_monitor = Node(
         package='rb300_webui',
@@ -171,16 +159,9 @@ def generate_launch_description():
             default_value='true',
             description='Invert right motor rotation'
         ),
-        DeclareLaunchArgument(
-            'odometry_publish_rate',
-            default_value='50.0',
-            description='Odometry publish rate in Hz'
-        ),
-
         # Launch nodes
         rplidar_launch,
         esp_serial_launch,
         robot_state_publisher,
-        odometry_publisher,
         system_monitor,
     ])

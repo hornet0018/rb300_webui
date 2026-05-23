@@ -27,7 +27,6 @@ rb300_webui/
 │   ├── start_web.sh            # Webサーバー起動
 │   └── test_odom.py            # オドメトリテスト
 ├── src/
-│   ├── odometry_publisher.cpp  # オドメトリ計算ノード
 │   └── system_monitor.cpp      # システム監視ノード
 ├── urdf/
 │   └── rb300.urdf.xacro        # ロボットモデル
@@ -101,9 +100,6 @@ http://<robot_ip>:8080
 ### 4. 個別ノードの起動
 
 ```bash
-# オドメトリパブリッシャー
-ros2 run rb300_webui odometry_publisher
-
 # システムモニター
 ros2 run rb300_webui system_monitor
 ```
@@ -131,7 +127,6 @@ ros2 run rb300_webui system_monitor
 | `cmd_vel_timeout` | `0.5` | cmd_velタイムアウト (秒) |
 | `invert_motor_l` | `true` | 左モーター回転を反転 |
 | `invert_motor_r` | `true` | 右モーター回転を反転 |
-| `odometry_publish_rate` | `50.0` | オドメトリ発行レート (Hz) |
 
 ### web_bridge.launch.py
 
@@ -147,8 +142,6 @@ ros2 run rb300_webui system_monitor
 
 | トピック名 | 型 | 発行元 | 説明 |
 |-----------|-----|--------|------|
-| `/odom` | `nav_msgs/Odometry` | `odometry_publisher` | オドメトリデータ |
-| `/tf` | `tf2_msgs/TFMessage` | `odometry_publisher` | odom→base_link変換 |
 | `/system/cpu_usage` | `std_msgs/Float64` | `system_monitor` | CPU使用率 (%) |
 | `/system/memory_available_gb` | `std_msgs/Float64` | `system_monitor` | 空きメモリ (GB) |
 | `/system/memory_usage_percent` | `std_msgs/Float64` | `system_monitor` | メモリ使用率 (%) |
