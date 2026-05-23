@@ -49,7 +49,7 @@ def generate_launch_description():
     )
 
     # Get paths
-    rb300_share_path = get_package_share_path('rb300_launch')
+    rb300_share_path = get_package_share_path('rb300_webui')
     urdf_path = os.path.join(rb300_share_path, 'urdf', 'rb300.urdf.xacro')
 
     # Robot State Publisher
@@ -62,7 +62,7 @@ def generate_launch_description():
 
     # Odometry Publisher
     odometry_publisher = Node(
-        package='rb300_launch',
+        package='rb300_webui',
         executable='odometry_publisher',
         parameters=[{
             'wheel_radius': LaunchConfiguration('wheel_radius'),
@@ -74,7 +74,7 @@ def generate_launch_description():
 
     # System Monitor
     system_monitor = Node(
-        package='rb300_launch',
+        package='rb300_webui',
         executable='system_monitor',
         parameters=[{
             'publish_rate': 1.0,

@@ -15,7 +15,7 @@ ROS2 Jazzy向けのRB300ロボット統合パッケージ。RPLidar、ESP32シ�
 ## パッケージ構造
 
 ```
-rb300_launch/
+rb300_webui/
 ├── CMakeLists.txt              # C++パッケージビルド設定
 ├── package.xml                 # ROS2パッケージ設定
 ├── launch/
@@ -57,7 +57,7 @@ git clone <this-repo>
 
 # ワークスペースルートでビルド
 cd ~/ros2_ws
-colcon build --packages-select rb300_launch
+colcon build --packages-select rb300_webui
 
 # 環境を読み込み
 source install/setup.bash
@@ -68,13 +68,13 @@ source install/setup.bash
 ### 1. システム全体の起動
 
 ```bash
-ros2 launch rb300_launch rb300_system.launch.py
+ros2 launch rb300_webui rb300_system.launch.py
 ```
 
 ### 2. WebSocketブリッジの起動（Web UI用）
 
 ```bash
-ros2 launch rb300_launch web_bridge.launch.py
+ros2 launch rb300_webui web_bridge.launch.py
 ```
 
 ### 3. Web UIへのアクセス
@@ -102,10 +102,10 @@ http://<robot_ip>:8080
 
 ```bash
 # オドメトリパブリッシャー
-ros2 run rb300_launch odometry_publisher
+ros2 run rb300_webui odometry_publisher
 
 # システムモニター
-ros2 run rb300_launch system_monitor
+ros2 run rb300_webui system_monitor
 ```
 
 ## Launch ファイルのパラメータ

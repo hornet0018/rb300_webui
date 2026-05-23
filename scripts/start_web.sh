@@ -2,7 +2,7 @@
 # RB300 Web Viewer Launcher
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WEB_DIR="$SCRIPT_DIR/../../share/rb300_launch/web"
+WEB_DIR="$SCRIPT_DIR/../../share/rb300_webui/web"
 
 echo "Starting RB300 Web Viewer..."
 echo "Script directory: $SCRIPT_DIR"
@@ -12,7 +12,7 @@ echo ""
 if [ ! -d "$WEB_DIR" ]; then
     echo "Error: Web directory not found!"
     echo "Falling back to source directory..."
-    WEB_DIR="/home/sunrise/ros2_ws/src/rb300_ros2/rb300_launch/web"
+    WEB_DIR="/home/sunrise/ros2_ws/src/rb300_ros2/rb300_webui/web"
 fi
 
 echo "Using web directory: $WEB_DIR"
@@ -34,7 +34,7 @@ sleep 1
 source /opt/ros/humble/setup.bash
 source ~/ros2_ws/install/setup.bash
 
-ros2 launch rb300_launch web_bridge.launch.py &
+ros2 launch rb300_webui web_bridge.launch.py &
 ROSBRIDGE_PID=$!
 
 # Start HTTP server
