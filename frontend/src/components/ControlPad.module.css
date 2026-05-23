@@ -1,0 +1,46 @@
+.controlPad {
+  background: #fff;
+  padding: 15px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.controlPad h2 {
+  margin-top: 0;
+  color: #333;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.controls button {
+  padding: 10px 20px;
+  margin: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  background: #007bff;
+  color: #fff;
+  transition: background 0.2s;
+}
+
+.controls button:hover {
+  background: #0056b3;
+}
+
+.controls button:active {
+  background: #004494;
+}
+
+.note {
+  color: #666;
+  font-size: 14px;
+  text-align: center;
+}
