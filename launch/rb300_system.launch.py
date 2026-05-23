@@ -86,7 +86,7 @@ def generate_launch_description():
         # RPLidar Arguments
         DeclareLaunchArgument(
             'rplidar_serial_port',
-            default_value='/dev/rplidar_c1',
+            default_value='/dev/rplidar_serial',
             description='Serial port for RPLidar'
         ),
         DeclareLaunchArgument(
