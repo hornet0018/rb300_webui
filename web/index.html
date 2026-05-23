@@ -318,6 +318,24 @@
             font-family: monospace;
             font-size: 0.9em;
         }
+        .gp-select {
+            margin-bottom: 10px;
+        }
+        .gp-select label {
+            font-size: 0.85em;
+            color: #495057;
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        .gp-select select {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.9em;
+            background: #fff;
+        }
         @media (max-width: 800px) {
             .dashboard { grid-template-columns: 1fr; }
         }
@@ -403,6 +421,12 @@
                 </div>
             </div>
             <div id="gpContent">
+                <div class="gp-select">
+                    <label>Controller</label>
+                    <select id="gpSelect" onchange="onGamepadSelected()">
+                        <option value="">-- No controller --</option>
+                    </select>
+                </div>
                 <div class="gp-status">
                     <div id="gpIndicator" class="gp-indicator"></div>
                     <span id="gpName" class="gp-name">No controller connected</span>
@@ -576,7 +600,7 @@
         const GP_MAX_ANGULAR = 1.0;  // rad/s
         const GP_DEADZONE = 0.15;
         let gamepad = null;
-        let gpPrevButtons = [];
+        let selectedGamepadIndex = -1;
         let manualModeEnabled = false;
         let gamepadEnabled = false;
 
@@ -649,17 +673,61 @@
             updateGamepadUI();
         }
 
+        function populateGamepadList() {
+            const select = document.getElementById('gpSelect');
+            const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+            const connectedPads = [];
+            for (let i = 0; i < pads.length; i++) {
+                if (pads[i] && pads[i].connected) connectedPads.push({ index: i, pad: pads[i] });
+            }
+
+            // Preserve current selection if still connected
+            const prevSelection = select.value;
+
+            // Clear and rebuild options
+            select.innerHTML = '';
+            if (connectedPads.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = ''; opt.textContent = '-- No controller --';
+                select.appendChild(opt);
+                selectedGamepadIndex = -1;
+            } else {
+                for (const item of connectedPads) {
+                    const opt = document.createElement('option');
+                    opt.value = item.index;
+                    opt.textContent = item.pad.id.substring(0, 45);
+                    select.appendChild(opt);
+                }
+                // Restore selection or default to first
+                if (prevSelection !== '' && connectedPads.some(c => String(c.index) === prevSelection)) {
+                    select.value = prevSelection;
+                    selectedGamepadIndex = parseInt(prevSelection);
+                } else {
+                    select.value = String(connectedPads[0].index);
+                    selectedGamepadIndex = connectedPads[0].index;
+                }
+            }
+        }
+
+        function onGamepadSelected() {
+            const select = document.getElementById('gpSelect');
+            const val = select.value;
+            selectedGamepadIndex = val === '' ? -1 : parseInt(val);
+        }
+
         function updateGamepad() {
             const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-            let activePad = null;
-            for (const p of pads) {
-                if (p && p.connected) { activePad = p; break; }
-            }
+            populateGamepadList();
 
             const indicator = document.getElementById('gpIndicator');
             const nameEl = document.getElementById('gpName');
 
-            if (!activePad) {
+            let activePad = null;
+            if (selectedGamepadIndex >= 0 && selectedGamepadIndex < pads.length) {
+                activePad = pads[selectedGamepadIndex];
+            }
+
+            if (!activePad || !activePad.connected) {
                 if (gamepad) {
                     stopRobot();
                     gamepad = null;
@@ -742,10 +810,15 @@
 
         window.addEventListener('gamepadconnected', (e) => {
             console.log('Gamepad connected:', e.gamepad.id);
+            populateGamepadList();
         });
         window.addEventListener('gamepaddisconnected', (e) => {
             console.log('Gamepad disconnected:', e.gamepad.id);
-            stopRobot();
+            populateGamepadList();
+            // If the currently selected gamepad was disconnected, stop the robot
+            if (selectedGamepadIndex === e.gamepad.index) {
+                stopRobot();
+            }
         });
 
         // Start gamepad loop
