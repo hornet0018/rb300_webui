@@ -1,228 +1,170 @@
-# rb300_webui
+# RB300 Launch Package
 
-RB300 ロボット向け Web UI および ROS 2 ブリッジパッケージ。
+ROS2 Jazzy向けのRB300ロボット統合パッケージ。RPLidar、ESP32シリアル通信、オドメトリ計算、Webベースの可視化・制御UIを統合しています。
 
-React + Vite で構築したフロントエンドと、Flask + Socket.IO + ROS 2 (`rclpy`) を組み合わせたバックエンドで、ブラウザからロボットを操作・監視できます。
+## 概要
 
----
+このパッケージは、RB300ロボットのシステム全体を起動・管理するためのROS2パッケージです。以下の機能を提供します：
 
-## 機能
+- **RPLidar C1** センサー統合
+- **ESP32** シリアル通信によるモーター制御・エンコーダ読み取り
+- **オドメトリ計算** (wheel odometry)
+- **システムモニタリング** (CPU・メモリ使用率)
+- **Webベースの可視化・制御UI** (ROSBridge経由)
 
-- **リアルタイム操縦**
-  - 画面のコントロールパッドまたはキーボード（W/A/S/D など）で移動・旋回
-  - `geometry_msgs/Twist` (`cmd_vel`) を ROS 2 にパブリッシュ
-- **ステータス監視**
-  - バッテリー電圧・残量 (`sensor_msgs/BatteryState`) のリアルタイム表示
-  - ロボット状態メッセージ (`std_msgs/String`) の表示
-- **WebSocket 通信**
-  - Socket.IO でブラウザと ROS 2 ノードを双方向通信
-- **ロボット上での実行**
-  - ビルド済みフロントエンド (`dist/`) を Flask から配信し、ロボットの IP にアクセスするだけで使用可能
-
----
-
-## 構成
+## パッケージ構造
 
 ```
-rb300_webui/
-├── rb300_webui/
-│   └── webui_node.py       # ROS 2 ノード + Flask サーバー
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx         # メイン画面
-│   │   ├── components/     # BatteryPanel, StatusPanel, ControlPad
-│   │   └── hooks/          # useSocket, useKeyboard
-│   └── dist/               # ビルド済み静的ファイル（ros2 run で配信）
+rb300_launch/
+├── CMakeLists.txt              # C++パッケージビルド設定
+├── package.xml                 # ROS2パッケージ設定
 ├── launch/
-│   └── webui_launch.py     # ROS 2 Launch ファイル
-├── package.xml
-├── setup.py
-└── README.md
+│   ├── rb300_system.launch.py  # システム全体起動
+│   └── web_bridge.launch.py    # WebSocketブリッジ起動
+├── scripts/
+│   ├── analyze_odom.py         # オドメトリ解析
+│   ├── monitor_odom.py         # オドメトリモニタ
+│   ├── start_web.sh            # Webサーバー起動
+│   └── test_odom.py            # オドメトリテスト
+├── src/
+│   ├── odometry_publisher.cpp  # オドメトリ計算ノード
+│   └── system_monitor.cpp      # システム監視ノード
+├── urdf/
+│   └── rb300.urdf.xacro        # ロボットモデル
+└── web/
+    └── odom_viewer.html        # Web UI (可視化・制御)
 ```
 
----
+## 依存パッケージ
 
-## 前提環境
+- `rclcpp`
+- `launch_ros`
+- `nav_msgs`
+- `geometry_msgs`
+- `tf2_ros`
+- `std_msgs`
+- `rplidar_ros` (外部パッケージ)
+- `esp_serial_v2_cpp` (外部パッケージ)
+- `robot_state_publisher`
+- `rosbridge_server`
 
-- ROS 2（Humble など、`rclpy` が使用できる環境）
-- Python 3.10+
-- Node.js 18+（フロントエンド開発・ビルド時のみ）
-
----
-
-## インストール
-
-### 1. ワークスペースに配置
+## インストール・ビルド
 
 ```bash
+# ワークスペースのsrcディレクトリに配置
 cd ~/ros2_ws/src
-git clone <リポジトリURL> rb300_webui
+git clone <this-repo>
+
+# ワークスペースルートでビルド
 cd ~/ros2_ws
-```
+colcon build --packages-select rb300_launch
 
-### 2. Python 依存のインストール
-
-```bash
-pip install -r src/rb300_webui/requirements.txt
-```
-
-### 3. フロントエンドのビルド
-
-```bash
-cd src/rb300_webui/frontend
-npm install
-npm run build
-cd ~/ros2_ws
-```
-
-ビルド成果物は `frontend/dist/` に出力され、`setup.py` の `collect_dist()` により ROS 2 パッケージに含まれます。
-
-### 4. パッケージのビルド
-
-```bash
-colcon build --packages-select rb300_webui
+# 環境を読み込み
 source install/setup.bash
 ```
-
----
 
 ## 使い方
 
-### 起動
-
-#### 本番モード（ビルド済み `dist/` を配信）
+### 1. システム全体の起動
 
 ```bash
-ros2 launch rb300_webui webui_launch.py
+ros2 launch rb300_launch rb300_system.launch.py
 ```
 
-#### 開発モード（Vite 開発サーバーも同時起動）
-
-フロントエンドのホットリロードを有効にしたい場合は `dev:=true` を付けます。
+### 2. WebSocketブリッジの起動（Web UI用）
 
 ```bash
-ros2 launch rb300_webui webui_launch.py dev:=true
+ros2 launch rb300_launch web_bridge.launch.py
 ```
 
-開発モードでは、ブラウザで Vite の dev サーバー（通常 `http://localhost:5173`）を開いてください。Flask サーバー（ポート 5000）も並行して起動し、ROS 2 ブリッジとして動作します。
+### 3. Web UIへのアクセス
 
-### 個別起動
+`web_bridge.launch.py` を起動後、ブラウザで以下のURLを開きます：
 
-ROS 2 ノードだけを起動したい場合は以下でも可能です。
+```
+http://<robot_ip>:8080
+```
+
+または `web/odom_viewer.html` を直接ブラウザで開きます（`rosbridge_server` は別途起動が必要）。
+
+#### Web UI機能
+
+- **オドメトリ可視化**: ロボットの位置・経路をリアルタイム表示
+- **キャリブレーションコントロール**:
+  - 前進/後進 1m
+  - 左右90°回転
+  - カスタム速度・時間指定
+  - D-Pad手動制御
+- **システムモニタリング**: CPU使用率・メモリ使用率表示
+- **エンコーダ値表示**: 左右車輪のエンコーダ値と差分
+
+### 4. 個別ノードの起動
 
 ```bash
-ros2 run rb300_webui webui_node
+# オドメトリパブリッシャー
+ros2 run rb300_launch odometry_publisher
+
+# システムモニター
+ros2 run rb300_launch system_monitor
 ```
 
-### アクセス
+## Launch ファイルのパラメータ
 
-- **本番モード**: ブラウザでロボット（または起動したマシン）の IP を開きます。
-  ```
-  http://<robot_ip>:5000/
-  ```
-- **開発モード**: Vite dev サーバーの URL を開きます（通常は `http://localhost:5173`）。
-  CORS が有効なため、dev サーバーからでも Flask API（ポート 5000）と通信できます。
+### rb300_system.launch.py
 
-※ ポートは `webui_node.py` 内の `port=5000` で変更可能です。
+| パラメータ | デフォルト値 | 説明 |
+|-----------|-------------|------|
+| `rplidar_serial_port` | `/dev/rplidar_c1` | RPLidarのシリアルポート |
+| `rplidar_baudrate` | `460800` | RPLidarのボーレート |
+| `rplidar_frame_id` | `laser` | RPLidarのフレームID |
+| `rplidar_inverted` | `false` | スキャンデータを反転 |
+| `rplidar_angle_compensate` | `true` | 角度補正を有効化 |
+| `rplidar_scan_mode` | `Standard` | スキャンモード |
+| `rplidar_flip_x_axis` | `true` | X軸を反転 |
+| `esp_serial_port` | `/dev/esp32_serial` | ESP32のシリアルポート |
+| `esp_baud_rate` | `115200` | ESP32のボーレート |
+| `wheel_radius` | `0.0473` | 車輪半径 (m) |
+| `wheel_separation` | `0.1796` | 車輪間距離 (m) |
+| `max_rpm` | `115` | 最大モーター回転数 |
+| `update_rate` | `50.0` | シリアル読み取りレート (Hz) |
+| `pulses_per_rev` | `32767.0` | エンコーダ分解能 (0-32767 = 0-360°) |
+| `cmd_vel_timeout` | `0.5` | cmd_velタイムアウト (秒) |
+| `invert_motor_l` | `true` | 左モーター回転を反転 |
+| `invert_motor_r` | `true` | 右モーター回転を反転 |
+| `odometry_publish_rate` | `50.0` | オドメトリ発行レート (Hz) |
 
-### 操作方法
+### web_bridge.launch.py
 
-- **コントロールパッド**: 画面のボタンで前後左右移動・旋回
-- **キーボード**: ブラウザ画面にフォーカスがある状態で W/A/S/D などを押すと `cmd_vel` が送信されます
-
----
+| パラメータ | デフォルト値 | 説明 |
+|-----------|-------------|------|
+| `port` | `9090` | WebSocketポート |
+| `address` | `''` | 待受アドレス（空=すべてのインターフェース） |
+| `delay` | `3` | 起動遅延 (秒) |
 
 ## トピック
 
-| 名前 | 型 | 方向 | 説明 |
-|---|---|---|---|
-| `cmd_vel` | `geometry_msgs/Twist` | Pub | Web UI からの速度指令 |
-| `battery_state` | `sensor_msgs/BatteryState` | Sub | バッテリー情報の受信・表示 |
-| `robot_status` | `std_msgs/String` | Sub | ロボット状態メッセージの受信・表示 |
+### 発行トピック
 
----
+| トピック名 | 型 | 発行元 | 説明 |
+|-----------|-----|--------|------|
+| `/odom` | `nav_msgs/Odometry` | `odometry_publisher` | オドメトリデータ |
+| `/tf` | `tf2_msgs/TFMessage` | `odometry_publisher` | odom→base_link変換 |
+| `/system/cpu_usage` | `std_msgs/Float64` | `system_monitor` | CPU使用率 (%) |
+| `/system/memory_available_gb` | `std_msgs/Float64` | `system_monitor` | 空きメモリ (GB) |
+| `/system/memory_usage_percent` | `std_msgs/Float64` | `system_monitor` | メモリ使用率 (%) |
 
-## ローカル開発
+### 購読トピック
 
-PC（ロボット以外）でフロントエンドとバックエンドを動かし、ホットリロードで開発できます。
-
-### 1. 環境準備
-
-- **ROS 2** がインストールされ、`rclpy` が使えること
-- **Node.js 18+** と **npm** がインストールされていること
-
-### 2. 依存インストール
-
-ターミナルを **2 つ**開いて、以下を実行してください。
-
-**ターミナル 1（バックエンド）:**
-
-```bash
-cd ~/ros2_ws/src/rb300_webui
-pip install -r requirements.txt
-```
-
-**ターミナル 2（フロントエンド）:**
-
-```bash
-cd ~/ros2_ws/src/rb300_webui/frontend
-npm install
-```
-
-### 3. 起動方法
-
-#### A. launch ファイルで一括起動（推奨）
-
-`dev:=true` を付けると、ROS 2 ノードと Vite 開発サーバーを同時に起動します。
-
-```bash
-cd ~/ros2_ws
-source install/setup.bash
-ros2 launch rb300_webui webui_launch.py dev:=true
-```
-
-ブラウザで `http://localhost:5173` を開いてください。
-
-#### B. 手動で別々に起動
-
-2 つのターミナルでそれぞれ起動します。
-
-**ターミナル 1（バックエンド）:**
-
-```bash
-cd ~/ros2_ws
-source install/setup.bash
-ros2 run rb300_webui webui_node
-```
-
-**ターミナル 2（フロントエンド）:**
-
-```bash
-cd ~/ros2_ws/src/rb300_webui/frontend
-npm run dev
-```
-
-ブラウザで `http://localhost:5173` を開いてください。
-
-### 4. 開発時の通信フロー
-
-- **フロントエンド** (`localhost:5173`) ←→ **Flask/Socket.IO** (`localhost:5000`)
-- Flask は CORS を許可しているため、Vite dev サーバーからでも通信可能です。
-- ROS 2 トピック（`cmd_vel`, `battery_state` など）は通常通り動作します。
-
-### 5. ビルド（本番反映）
-
-開発が完了したら、ビルドして `dist/` を更新してください。
-
-```bash
-cd ~/ros2_ws/src/rb300_webui/frontend
-npm run build
-```
-
-その後、ROS 2 ワークスペースで `colcon build` を実行し、本番モードで確認してください。
-
----
+| トピック名 | 型 | 購読元 | 説明 |
+|-----------|-----|--------|------|
+| `/cmd_vel` | `geometry_msgs/Twist` | `esp_serial_v2_cpp` | 速度指令 |
+| `/esp/position_l_rad` | `std_msgs/Float64` | Web UI | 左エンコーダ値 (rad) |
+| `/esp/position_r_rad` | `std_msgs/Float64` | Web UI | 右エンコーダ値 (rad) |
 
 ## ライセンス
 
-MIT
+TODO: License declaration
+
+## 作者
+
+sunrise <hornet0018@users.noreply.github.com>
