@@ -50,7 +50,7 @@ def generate_launch_description():
             output='screen'
         ),
 
-        # HTTP server for odom_viewer.html
+        # HTTP server for index.html
         ExecuteProcess(
             cmd=[
                 'python3', '-m', 'http.server',

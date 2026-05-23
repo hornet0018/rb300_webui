@@ -32,7 +32,7 @@ rb300_webui/
 ├── urdf/
 │   └── rb300.urdf.xacro        # ロボットモデル
 └── web/
-    └── odom_viewer.html        # Web UI (可視化・制御)
+    └── index.html              # Web UI (可視化・制御)
 ```
 
 ## 依存パッケージ
@@ -85,7 +85,7 @@ ros2 launch rb300_webui web_bridge.launch.py
 http://<robot_ip>:8080
 ```
 
-または `web/odom_viewer.html` を直接ブラウザで開きます（`rosbridge_server` は別途起動が必要）。
+または `web/index.html` を直接ブラウザで開きます（`rosbridge_server` は別途起動が必要）。
 
 #### Web UI機能
 
