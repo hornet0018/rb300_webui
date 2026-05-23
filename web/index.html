@@ -91,7 +91,7 @@
         .data-cell.danger { background: #f8d7da; }
         .controls-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 20px;
         }
         .control-section h3 {
@@ -161,6 +161,107 @@
             color: #6c757d;
             margin-top: 8px;
         }
+        /* Gamepad panel styles */
+        .gp-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .gp-indicator {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #dc3545;
+            transition: background 0.3s;
+        }
+        .gp-indicator.active { background: #28a745; }
+        .gp-name {
+            font-size: 0.9em;
+            color: #495057;
+            font-weight: 600;
+        }
+        .gp-axes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .gp-axis {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .gp-axis label {
+            font-size: 0.8em;
+            color: #6c757d;
+            min-width: 50px;
+        }
+        .gp-bar {
+            flex: 1;
+            height: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+        .gp-bar-fill {
+            height: 100%;
+            background: #007bff;
+            border-radius: 5px;
+            position: absolute;
+            top: 0;
+            transition: left 0.05s, width 0.05s;
+        }
+        .gp-bar-center {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #adb5bd;
+        }
+        .gp-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .gp-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            background: #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7em;
+            color: #495057;
+            font-weight: bold;
+            transition: background 0.1s;
+        }
+        .gp-btn.pressed { background: #28a745; color: #fff; }
+        .gp-output {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #dee2e6;
+        }
+        .gp-help {
+            font-size: 0.78em;
+            color: #6c757d;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+        .gp-help kbd {
+            background: #f8f9fa;
+            border: 1px solid #ced4da;
+            border-radius: 3px;
+            padding: 1px 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
         @media (max-width: 800px) {
             .dashboard { grid-template-columns: 1fr; }
         }
@@ -225,6 +326,42 @@
                 <div class="data-cell" id="cpuCell"><label>CPU</label><div class="value" id="cpuUsage">--</div></div>
                 <div class="data-cell" id="memCell"><label>Mem Free</label><div class="value" id="memAvailable">--</div></div>
                 <div class="data-cell" id="memPctCell"><label>Mem Usage</label><div class="value" id="memPercent">--</div></div>
+            </div>
+        </div>
+
+        <!-- Gamepad Panel -->
+        <div class="panel">
+            <h2>🎮 Gamepad</h2>
+            <div class="gp-status">
+                <div id="gpIndicator" class="gp-indicator"></div>
+                <span id="gpName" class="gp-name">No controller connected</span>
+            </div>
+            <div class="gp-axes" id="gpAxes">
+                <div class="gp-axis">
+                    <label>L-Y</label>
+                    <div class="gp-bar"><div class="gp-bar-center"></div><div id="gpBar0" class="gp-bar-fill" style="left:50%;width:0%"></div></div>
+                </div>
+                <div class="gp-axis">
+                    <label>L-X</label>
+                    <div class="gp-bar"><div class="gp-bar-center"></div><div id="gpBar1" class="gp-bar-fill" style="left:50%;width:0%"></div></div>
+                </div>
+                <div class="gp-axis">
+                    <label>R-Y</label>
+                    <div class="gp-bar"><div class="gp-bar-center"></div><div id="gpBar2" class="gp-bar-fill" style="left:50%;width:0%"></div></div>
+                </div>
+                <div class="gp-axis">
+                    <label>R-X</label>
+                    <div class="gp-bar"><div class="gp-bar-center"></div><div id="gpBar3" class="gp-bar-fill" style="left:50%;width:0%"></div></div>
+                </div>
+            </div>
+            <div class="gp-buttons" id="gpButtons"></div>
+            <div class="gp-output">
+                <div class="data-cell"><label>Cmd Linear</label><div class="value" id="gpCmdLinear">0.000</div></div>
+                <div class="data-cell"><label>Cmd Angular</label><div class="value" id="gpCmdAngular">0.000</div></div>
+            </div>
+            <div class="gp-help">
+                <kbd>L Stick Y</kbd>: Forward/Back &nbsp;|&nbsp; <kbd>L Stick X</kbd>: Rotate &nbsp;|&nbsp; <kbd>B</kbd> or <kbd>RB</kbd>: Stop<br>
+                Max Linear: <span id="gpMaxLin">0.3</span> m/s &nbsp;|&nbsp; Max Angular: <span id="gpMaxAng">1.0</span> rad/s &nbsp;|&nbsp; Deadzone: 0.15
             </div>
         </div>
 
@@ -360,6 +497,132 @@
             publishCmdVel(linear, angular);
             cmdInterval = setInterval(() => publishCmdVel(linear, angular), 100);
         }
+
+        // ===== Gamepad (HID Controller) =====
+        const GP_MAX_LINEAR = 0.3;   // m/s
+        const GP_MAX_ANGULAR = 1.0;  // rad/s
+        const GP_DEADZONE = 0.15;
+        let gamepad = null;
+        let gpPrevButtons = [];
+
+        document.getElementById('gpMaxLin').textContent = GP_MAX_LINEAR.toFixed(1);
+        document.getElementById('gpMaxAng').textContent = GP_MAX_ANGULAR.toFixed(1);
+
+        // Create button display elements
+        const gpButtonsContainer = document.getElementById('gpButtons');
+        for (let i = 0; i < 16; i++) {
+            const div = document.createElement('div');
+            div.className = 'gp-btn';
+            div.id = 'gpBtn' + i;
+            div.textContent = i;
+            gpButtonsContainer.appendChild(div);
+        }
+
+        function applyDeadzone(val) {
+            if (Math.abs(val) < GP_DEADZONE) return 0;
+            // Rescale to remove deadzone gap
+            const sign = val > 0 ? 1 : -1;
+            return sign * (Math.abs(val) - GP_DEADZONE) / (1 - GP_DEADZONE);
+        }
+
+        function updateGamepad() {
+            const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+            let activePad = null;
+            for (const p of pads) {
+                if (p && p.connected) { activePad = p; break; }
+            }
+
+            const indicator = document.getElementById('gpIndicator');
+            const nameEl = document.getElementById('gpName');
+
+            if (!activePad) {
+                if (gamepad) {
+                    // Controller was disconnected
+                    stopRobot();
+                    gamepad = null;
+                }
+                indicator.classList.remove('active');
+                nameEl.textContent = 'No controller connected';
+                // Reset bars
+                for (let i = 0; i < 4; i++) {
+                    const bar = document.getElementById('gpBar' + i);
+                    if (bar) { bar.style.left = '50%'; bar.style.width = '0%'; }
+                }
+                // Reset buttons
+                for (let i = 0; i < 16; i++) {
+                    const btn = document.getElementById('gpBtn' + i);
+                    if (btn) btn.classList.remove('pressed');
+                }
+                document.getElementById('gpCmdLinear').textContent = '0.000';
+                document.getElementById('gpCmdAngular').textContent = '0.000';
+                requestAnimationFrame(updateGamepad);
+                return;
+            }
+
+            gamepad = activePad;
+            indicator.classList.add('active');
+            nameEl.textContent = gamepad.id.substring(0, 40);
+
+            // Update axis bars
+            for (let i = 0; i < 4 && i < gamepad.axes.length; i++) {
+                const val = gamepad.axes[i];
+                const bar = document.getElementById('gpBar' + i);
+                if (!bar) continue;
+                const pct = Math.abs(val) * 50;
+                if (val >= 0) {
+                    bar.style.left = '50%';
+                    bar.style.width = pct + '%';
+                } else {
+                    bar.style.left = (50 - pct) + '%';
+                    bar.style.width = pct + '%';
+                }
+            }
+
+            // Update button display
+            for (let i = 0; i < gamepad.buttons.length && i < 16; i++) {
+                const btn = document.getElementById('gpBtn' + i);
+                if (!btn) continue;
+                const pressed = gamepad.buttons[i].pressed;
+                if (pressed) btn.classList.add('pressed');
+                else btn.classList.remove('pressed');
+            }
+
+            // Map controls:
+            // Axis 1 (Left Stick Y): forward/backward (inverted because up is negative)
+            // Axis 0 (Left Stick X): rotation
+            const rawLinear = -gamepad.axes[1];  // negate: push up = forward
+            const rawAngular = -gamepad.axes[0]; // negate: push right = clockwise
+
+            const linear = applyDeadzone(rawLinear) * GP_MAX_LINEAR;
+            const angular = applyDeadzone(rawAngular) * GP_MAX_ANGULAR;
+
+            document.getElementById('gpCmdLinear').textContent = linear.toFixed(3);
+            document.getElementById('gpCmdAngular').textContent = angular.toFixed(3);
+
+            // Emergency stop buttons: B (1) or RB (5)
+            const stopPressed = gamepad.buttons[1].pressed || gamepad.buttons[5].pressed;
+            if (stopPressed) {
+                stopRobot();
+            } else if (Math.abs(linear) > 0 || Math.abs(angular) > 0) {
+                publishCmdVel(linear, angular);
+            } else {
+                // No input and no interval running: ensure zero
+                if (!cmdInterval) publishCmdVel(0, 0);
+            }
+
+            requestAnimationFrame(updateGamepad);
+        }
+
+        window.addEventListener('gamepadconnected', (e) => {
+            console.log('Gamepad connected:', e.gamepad.id);
+        });
+        window.addEventListener('gamepaddisconnected', (e) => {
+            console.log('Gamepad disconnected:', e.gamepad.id);
+            stopRobot();
+        });
+
+        // Start gamepad loop
+        requestAnimationFrame(updateGamepad);
 
         // ===== LiDAR Canvas =====
         const lidarCanvas = document.getElementById('lidarCanvas');
