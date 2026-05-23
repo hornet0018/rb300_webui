@@ -70,6 +70,13 @@ def generate_launch_description():
         output='screen'
     )
 
+    # Odometry Publisher
+    odometry_publisher = Node(
+        package='esp_serial_v2_cpp',
+        executable='odometry_publisher',
+        output='screen'
+    )
+
     return LaunchDescription([
         # RPLidar Arguments
         DeclareLaunchArgument(
@@ -164,4 +171,5 @@ def generate_launch_description():
         esp_serial_launch,
         robot_state_publisher,
         system_monitor,
+        odometry_publisher,
     ])
