@@ -161,6 +161,62 @@
             color: #6c757d;
             margin-top: 8px;
         }
+        /* Toggle switch */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding: 8px 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        .toggle-row label {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #495057;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #adb5bd;
+            border-radius: 12px;
+            outline: none;
+            transition: background 0.2s;
+            border: none;
+        }
+        .toggle-switch:checked { background: #28a745; }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .toggle-switch:checked::after { transform: translateX(20px); }
+        .toggle-status {
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 8px;
+            min-width: 36px;
+            text-align: right;
+        }
+        .toggle-status.on { color: #28a745; }
+        .toggle-status.off { color: #dc3545; }
+        .gp-disabled-overlay {
+            opacity: 0.4;
+            pointer-events: none;
+            filter: grayscale(60%);
+        }
         /* Gamepad panel styles */
         .gp-status {
             display: flex;
@@ -332,11 +388,26 @@
         <!-- Gamepad Panel -->
         <div class="panel">
             <h2>🎮 Gamepad</h2>
-            <div class="gp-status">
-                <div id="gpIndicator" class="gp-indicator"></div>
-                <span id="gpName" class="gp-name">No controller connected</span>
+            <div class="toggle-row">
+                <label>🖐️ Manual Mode</label>
+                <div style="display:flex;align-items:center;">
+                    <input type="checkbox" id="manualModeToggle" class="toggle-switch" onchange="toggleManualMode()">
+                    <span id="manualModeStatus" class="toggle-status off">OFF</span>
+                </div>
             </div>
-            <div class="gp-axes" id="gpAxes">
+            <div class="toggle-row">
+                <label>🎮 Gamepad Input</label>
+                <div style="display:flex;align-items:center;">
+                    <input type="checkbox" id="gamepadToggle" class="toggle-switch" onchange="toggleGamepad()">
+                    <span id="gamepadStatus" class="toggle-status off">OFF</span>
+                </div>
+            </div>
+            <div id="gpContent">
+                <div class="gp-status">
+                    <div id="gpIndicator" class="gp-indicator"></div>
+                    <span id="gpName" class="gp-name">No controller connected</span>
+                </div>
+                <div class="gp-axes" id="gpAxes">
                 <div class="gp-axis">
                     <label>L-Y</label>
                     <div class="gp-bar"><div class="gp-bar-center"></div><div id="gpBar0" class="gp-bar-fill" style="left:50%;width:0%"></div></div>
@@ -359,9 +430,10 @@
                 <div class="data-cell"><label>Cmd Linear</label><div class="value" id="gpCmdLinear">0.000</div></div>
                 <div class="data-cell"><label>Cmd Angular</label><div class="value" id="gpCmdAngular">0.000</div></div>
             </div>
-            <div class="gp-help">
-                <kbd>L Stick Y</kbd>: Forward/Back &nbsp;|&nbsp; <kbd>L Stick X</kbd>: Rotate &nbsp;|&nbsp; <kbd>B</kbd> or <kbd>RB</kbd>: Stop<br>
-                Max Linear: <span id="gpMaxLin">0.3</span> m/s &nbsp;|&nbsp; Max Angular: <span id="gpMaxAng">1.0</span> rad/s &nbsp;|&nbsp; Deadzone: 0.15
+                <div class="gp-help">
+                    <kbd>L Stick Y</kbd>: Forward/Back &nbsp;|&nbsp; <kbd>L Stick X</kbd>: Rotate &nbsp;|&nbsp; <kbd>B</kbd> or <kbd>RB</kbd>: Stop<br>
+                    Max Linear: <span id="gpMaxLin">0.3</span> m/s &nbsp;|&nbsp; Max Angular: <span id="gpMaxAng">1.0</span> rad/s &nbsp;|&nbsp; Deadzone: 0.15
+                </div>
             </div>
         </div>
 
@@ -493,6 +565,7 @@
             cmdInterval = setInterval(() => publishCmdVel(linear, angular), 100);
         }
         function startDPad(linear, angular) {
+            if (!manualModeEnabled) return;
             stopRobot();
             publishCmdVel(linear, angular);
             cmdInterval = setInterval(() => publishCmdVel(linear, angular), 100);
@@ -504,6 +577,8 @@
         const GP_DEADZONE = 0.15;
         let gamepad = null;
         let gpPrevButtons = [];
+        let manualModeEnabled = false;
+        let gamepadEnabled = false;
 
         document.getElementById('gpMaxLin').textContent = GP_MAX_LINEAR.toFixed(1);
         document.getElementById('gpMaxAng').textContent = GP_MAX_ANGULAR.toFixed(1);
@@ -520,9 +595,58 @@
 
         function applyDeadzone(val) {
             if (Math.abs(val) < GP_DEADZONE) return 0;
-            // Rescale to remove deadzone gap
             const sign = val > 0 ? 1 : -1;
             return sign * (Math.abs(val) - GP_DEADZONE) / (1 - GP_DEADZONE);
+        }
+
+        function updateManualModeUI() {
+            const toggle = document.getElementById('manualModeToggle');
+            const status = document.getElementById('manualModeStatus');
+            toggle.checked = manualModeEnabled;
+            status.textContent = manualModeEnabled ? 'ON' : 'OFF';
+            status.className = 'toggle-status ' + (manualModeEnabled ? 'on' : 'off');
+
+            // Disable/enable D-Pad buttons
+            const dpadButtons = document.querySelectorAll('.d-pad button');
+            for (const btn of dpadButtons) {
+                btn.disabled = !manualModeEnabled;
+                btn.style.opacity = manualModeEnabled ? '1' : '0.4';
+                btn.style.cursor = manualModeEnabled ? 'pointer' : 'not-allowed';
+            }
+
+            if (!manualModeEnabled) {
+                stopRobot();
+            }
+        }
+
+        function updateGamepadUI() {
+            const toggle = document.getElementById('gamepadToggle');
+            const status = document.getElementById('gamepadStatus');
+            const content = document.getElementById('gpContent');
+            toggle.checked = gamepadEnabled;
+            status.textContent = gamepadEnabled ? 'ON' : 'OFF';
+            status.className = 'toggle-status ' + (gamepadEnabled ? 'on' : 'off');
+
+            if (!gamepadEnabled || !manualModeEnabled) {
+                content.classList.add('gp-disabled-overlay');
+            } else {
+                content.classList.remove('gp-disabled-overlay');
+            }
+
+            if (!gamepadEnabled) {
+                stopRobot();
+            }
+        }
+
+        function toggleManualMode() {
+            manualModeEnabled = document.getElementById('manualModeToggle').checked;
+            updateManualModeUI();
+            updateGamepadUI();
+        }
+
+        function toggleGamepad() {
+            gamepadEnabled = document.getElementById('gamepadToggle').checked;
+            updateGamepadUI();
         }
 
         function updateGamepad() {
@@ -537,18 +661,15 @@
 
             if (!activePad) {
                 if (gamepad) {
-                    // Controller was disconnected
                     stopRobot();
                     gamepad = null;
                 }
                 indicator.classList.remove('active');
                 nameEl.textContent = 'No controller connected';
-                // Reset bars
                 for (let i = 0; i < 4; i++) {
                     const bar = document.getElementById('gpBar' + i);
                     if (bar) { bar.style.left = '50%'; bar.style.width = '0%'; }
                 }
-                // Reset buttons
                 for (let i = 0; i < 16; i++) {
                     const btn = document.getElementById('gpBtn' + i);
                     if (btn) btn.classList.remove('pressed');
@@ -587,11 +708,18 @@
                 else btn.classList.remove('pressed');
             }
 
+            // Only send commands when both manual mode and gamepad are enabled
+            if (!manualModeEnabled || !gamepadEnabled) {
+                document.getElementById('gpCmdLinear').textContent = '0.000';
+                document.getElementById('gpCmdAngular').textContent = '0.000';
+                if (!cmdInterval) publishCmdVel(0, 0);
+                requestAnimationFrame(updateGamepad);
+                return;
+            }
+
             // Map controls:
-            // Axis 1 (Left Stick Y): forward/backward (inverted because up is negative)
-            // Axis 0 (Left Stick X): rotation
-            const rawLinear = -gamepad.axes[1];  // negate: push up = forward
-            const rawAngular = -gamepad.axes[0]; // negate: push right = clockwise
+            const rawLinear = -gamepad.axes[1];
+            const rawAngular = -gamepad.axes[0];
 
             const linear = applyDeadzone(rawLinear) * GP_MAX_LINEAR;
             const angular = applyDeadzone(rawAngular) * GP_MAX_ANGULAR;
@@ -606,7 +734,6 @@
             } else if (Math.abs(linear) > 0 || Math.abs(angular) > 0) {
                 publishCmdVel(linear, angular);
             } else {
-                // No input and no interval running: ensure zero
                 if (!cmdInterval) publishCmdVel(0, 0);
             }
 
@@ -850,6 +977,8 @@
         });
 
         // ===== Init =====
+        updateManualModeUI();
+        updateGamepadUI();
         drawLidarGrid();
         drawRobotIcon();
         drawPathGrid();
