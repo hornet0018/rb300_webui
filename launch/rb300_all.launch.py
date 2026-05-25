@@ -3,6 +3,7 @@
 import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, ExecuteProcess
+from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
@@ -115,14 +116,23 @@ def generate_launch_description():
         output='screen'
     )
 
-    # HTTP server for web UI
+    # Vite dev server (development mode)
+    vite_dev_server = ExecuteProcess(
+        cmd=['npm', 'run', 'dev'],
+        cwd=web_dir,
+        output='screen',
+        condition=IfCondition(LaunchConfiguration('web_dev'))
+    )
+
+    # HTTP server for web UI (production mode)
     http_server = ExecuteProcess(
         cmd=[
             'python3', '-m', 'http.server',
             LaunchConfiguration('web_port'),
             '--directory', web_dir
         ],
-        output='screen'
+        output='screen',
+        condition=UnlessCondition(LaunchConfiguration('web_dev'))
     )
 
     return LaunchDescription([
@@ -224,7 +234,12 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'web_port',
             default_value='8080',
-            description='HTTP server port for web UI'
+            description='HTTP server port for web UI (only used when web_dev=false)'
+        ),
+        DeclareLaunchArgument(
+            'web_dev',
+            default_value='false',
+            description='Use Vite dev server (npm run dev) instead of python http.server'
         ),
 
         # Launch nodes
@@ -235,5 +250,6 @@ def generate_launch_description():
         odometry_publisher,
         slam_controller,
         rosbridge_node,
+        vite_dev_server,
         http_server,
     ])

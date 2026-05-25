@@ -3,6 +3,7 @@
 import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess
+from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
@@ -31,7 +32,12 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'web_port',
             default_value='8080',
-            description='HTTP server port for web UI'
+            description='HTTP server port for web UI (only used when web_dev=false)'
+        ),
+        DeclareLaunchArgument(
+            'web_dev',
+            default_value='false',
+            description='Use Vite dev server (npm run dev) instead of python http.server'
         ),
 
         # ROSBridge WebSocket server
@@ -50,13 +56,22 @@ def generate_launch_description():
             output='screen'
         ),
 
-        # HTTP server for index.html
+        # Vite dev server (development mode)
+        ExecuteProcess(
+            cmd=['npm', 'run', 'dev'],
+            cwd=web_dir,
+            output='screen',
+            condition=IfCondition(LaunchConfiguration('web_dev'))
+        ),
+
+        # HTTP server for web UI (production mode)
         ExecuteProcess(
             cmd=[
                 'python3', '-m', 'http.server',
                 LaunchConfiguration('web_port'),
                 '--directory', web_dir
             ],
-            output='screen'
+            output='screen',
+            condition=UnlessCondition(LaunchConfiguration('web_dev'))
         ),
     ])

@@ -44,30 +44,47 @@ install(DIRECTORY
 )
 
 # Build web UI with Vite if npm is available
-find_program(NPM_EXECUTABLE npm)
-if(NPM_EXECUTABLE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/web/package.json")
-  message(STATUS "Building web UI with Vite...")
-  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/web/node_modules")
-    execute_process(
-      COMMAND ${NPM_EXECUTABLE} install
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/web
-      RESULT_VARIABLE npm_install_result
-    )
-    if(NOT npm_install_result EQUAL 0)
-      message(WARNING "npm install failed for web UI")
-    endif()
+if(AMENT_CMAKE_SYMLINK_INSTALL)
+  # In symlink-install mode, make dist/ a symlink to web/ so source edits are reflected immediately.
+  # This lets you run `npm run dev` from the source tree without rebuilding.
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/web/dist" AND NOT IS_SYMLINK "${CMAKE_CURRENT_SOURCE_DIR}/web/dist")
+    file(REMOVE_RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/web/dist")
   endif()
-  execute_process(
-    COMMAND ${NPM_EXECUTABLE} run build
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/web
-    RESULT_VARIABLE npm_build_result
-  )
-  if(NOT npm_build_result EQUAL 0)
-    message(WARNING "npm run build failed for web UI")
+  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/web/dist")
+    execute_process(
+      COMMAND ${CMAKE_COMMAND} -E create_symlink
+        "${CMAKE_CURRENT_SOURCE_DIR}/web"
+        "${CMAKE_CURRENT_SOURCE_DIR}/web/dist"
+    )
+  endif()
+  message(STATUS "Symlink-install: web/dist -> web/ (npm run dev compatible)")
+else()
+  # Normal build: compile with Vite
+  find_program(NPM_EXECUTABLE npm)
+  if(NPM_EXECUTABLE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/web/package.json")
+    message(STATUS "Building web UI with Vite...")
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/web/node_modules")
+      execute_process(
+        COMMAND ${NPM_EXECUTABLE} install
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/web
+        RESULT_VARIABLE npm_install_result
+      )
+      if(NOT npm_install_result EQUAL 0)
+        message(WARNING "npm install failed for web UI")
+      endif()
+    endif()
+    execute_process(
+      COMMAND ${NPM_EXECUTABLE} run build
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/web
+      RESULT_VARIABLE npm_build_result
+    )
+    if(NOT npm_build_result EQUAL 0)
+      message(WARNING "npm run build failed for web UI")
+    endif()
   endif()
 endif()
 
-# Install web files (built by Vite)
+# Install web files (built by Vite, or symlinked to web/ for dev)
 install(DIRECTORY
   web/dist/
   DESTINATION share/${PROJECT_NAME}/web
