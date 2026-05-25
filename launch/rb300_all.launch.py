@@ -2,7 +2,7 @@
 
 import os
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, ExecuteProcess
 from launch.substitutions import LaunchConfiguration
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
@@ -55,6 +55,7 @@ def generate_launch_description():
     # Get paths
     rb300_share_path = get_package_share_directory('rb300_webui')
     urdf_path = os.path.join(rb300_share_path, 'urdf', 'rb300.urdf.xacro')
+    web_dir = os.path.join(rb300_share_path, 'web')
 
     # Robot State Publisher
     robot_state_publisher = Node(
@@ -96,6 +97,32 @@ def generate_launch_description():
             'slam_params_file': slam_config_file,
             'command_topic': '/rb300_webui/slam_command',
         }],
+    )
+
+    # ROSBridge WebSocket server
+    rosbridge_node = Node(
+        package='rosbridge_server',
+        executable='rosbridge_websocket',
+        parameters=[{
+            'port': LaunchConfiguration('rosbridge_port'),
+            'address': LaunchConfiguration('rosbridge_address'),
+            'delay': LaunchConfiguration('rosbridge_delay'),
+            'fragment_timeout': 600,
+            'delay_between_messages': 0,
+            'max_message_size': 10000000,
+            'uncompress_timeout': 0,
+        }],
+        output='screen'
+    )
+
+    # HTTP server for web UI
+    http_server = ExecuteProcess(
+        cmd=[
+            'python3', '-m', 'http.server',
+            LaunchConfiguration('web_port'),
+            '--directory', web_dir
+        ],
+        output='screen'
     )
 
     return LaunchDescription([
@@ -177,6 +204,29 @@ def generate_launch_description():
             default_value='true',
             description='Invert right motor rotation'
         ),
+
+        # Web UI Arguments
+        DeclareLaunchArgument(
+            'rosbridge_port',
+            default_value='9090',
+            description='WebSocket port for rosbridge'
+        ),
+        DeclareLaunchArgument(
+            'rosbridge_address',
+            default_value='',
+            description='WebSocket address (empty for all interfaces)'
+        ),
+        DeclareLaunchArgument(
+            'rosbridge_delay',
+            default_value='3',
+            description='Delay in seconds before rosbridge launches'
+        ),
+        DeclareLaunchArgument(
+            'web_port',
+            default_value='8080',
+            description='HTTP server port for web UI'
+        ),
+
         # Launch nodes
         rplidar_launch,
         esp_serial_launch,
@@ -184,4 +234,6 @@ def generate_launch_description():
         system_monitor,
         odometry_publisher,
         slam_controller,
+        rosbridge_node,
+        http_server,
     ])

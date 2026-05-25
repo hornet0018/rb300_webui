@@ -43,10 +43,34 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}
 )
 
-# Install web files
+# Build web UI with Vite if npm is available
+find_program(NPM_EXECUTABLE npm)
+if(NPM_EXECUTABLE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/web/package.json")
+  message(STATUS "Building web UI with Vite...")
+  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/web/node_modules")
+    execute_process(
+      COMMAND ${NPM_EXECUTABLE} install
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/web
+      RESULT_VARIABLE npm_install_result
+    )
+    if(NOT npm_install_result EQUAL 0)
+      message(WARNING "npm install failed for web UI")
+    endif()
+  endif()
+  execute_process(
+    COMMAND ${NPM_EXECUTABLE} run build
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/web
+    RESULT_VARIABLE npm_build_result
+  )
+  if(NOT npm_build_result EQUAL 0)
+    message(WARNING "npm run build failed for web UI")
+  endif()
+endif()
+
+# Install web files (built by Vite)
 install(DIRECTORY
-  web
-  DESTINATION share/${PROJECT_NAME}
+  web/dist/
+  DESTINATION share/${PROJECT_NAME}/web
 )
 
 if(BUILD_TESTING)

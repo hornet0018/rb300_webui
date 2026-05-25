@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>AMR Debug Console</title>
+    <link rel="stylesheet" href="./src/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/eventemitter2@6.4.9/lib/eventemitter2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/roslib@1.3.0/build/roslib.min.js"></script>
+</head>
+<body>
+  <div class="header">
+    <h1>🐞 AMR Debug Console</h1>
+    <div class="status-bar">
+        <div class="status-item">
+            <span class="status-label">ROS</span>
+            <span id="statusBadge" class="status-badge disconnected">Disconnected</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Mode</span>
+            <span id="headerManual" class="status-badge off">Auto</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Pad</span>
+            <span id="headerGamepad" class="status-badge off">OFF</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Vel</span>
+            <span id="headerVel" class="status-value">0.00 / 0.00</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Pos</span>
+            <span id="headerPos" class="status-value">-- / --</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">E-Stop</span>
+            <span id="headerEstop" class="status-badge ok">READY</span>
+        </div>
+    </div>
+  </div>
+
+  <div class="app-container">
+    <aside class="sidebar">
+      <h3>Navigation</h3>
+      <a href="./index.html" class="nav-link">📊 Dashboard</a>
+      <a href="./debug.html" class="nav-link active">🐞 Debug</a>
+    </aside>
+
+    <main class="main-content">
+      <div class="dashboard">
+        <!-- LiDAR Scan View -->
+        <div class="panel" id="panel-lidar">
+            <h2>📡 LiDAR Scan</h2>
+            <canvas id="lidarCanvas" width="480" height="480"></canvas>
+            <div class="scan-info">
+                <span id="scanPoints">Points: --</span>
+                <span id="scanRange">Range: -- m</span>
+                <span id="scanFreq">Freq: -- Hz</span>
+            </div>
+        </div>
+
+        <!-- Odometry Path View -->
+        <div class="panel" id="panel-path">
+            <h2>🛤️ Odometry Path</h2>
+            <canvas id="pathCanvas" width="480" height="360"></canvas>
+            <div class="scan-info">
+                <span id="pathPoints">Path points: 0</span>
+                <button onclick="resetPath()" style="padding:4px 10px;font-size:0.8em;">Clear</button>
+                <button onclick="toggleAutoScale()" style="padding:4px 10px;font-size:0.8em;">Auto Scale</button>
+            </div>
+        </div>
+
+        <!-- Odometry Data -->
+        <div class="panel" id="panel-odom">
+            <h2>📊 Odometry</h2>
+            <div class="data-grid">
+                <div class="data-cell"><label>X</label><div class="value" id="x">--</div></div>
+                <div class="data-cell"><label>Y</label><div class="value" id="y">--</div></div>
+                <div class="data-cell"><label>Theta</label><div class="value" id="theta">--</div></div>
+                <div class="data-cell"><label>Linear</label><div class="value" id="linear">--</div></div>
+                <div class="data-cell"><label>Angular</label><div class="value" id="angular">--</div></div>
+                <div class="data-cell"><label>Distance</label><div class="value" id="distance">--</div></div>
+            </div>
+        </div>
+
+        <!-- Encoder Data -->
+        <div class="panel" id="panel-encoder">
+            <h2>⚙️ Encoders</h2>
+            <div class="data-grid">
+                <div class="data-cell"><label>Left (rad)</label><div class="value" id="encoderL">--</div></div>
+                <div class="data-cell"><label>Right (rad)</label><div class="value" id="encoderR">--</div></div>
+                <div class="data-cell"><label>Diff (rad)</label><div class="value" id="encoderDiff">--</div></div>
+            </div>
+        </div>
+
+        <!-- System Monitor -->
+        <div class="panel" id="panel-system">
+            <h2>🖥️ System Monitor</h2>
+            <div class="data-grid">
+                <div class="data-cell" id="cpuCell"><label>CPU Usage</label><div class="value" id="cpuUsage">--</div></div>
+                <div class="data-cell" id="memCell"><label>Mem Free</label><div class="value" id="memAvailable">--</div></div>
+                <div class="data-cell" id="memPctCell"><label>Mem Usage</label><div class="value" id="memPercent">--</div></div>
+            </div>
+            <canvas id="sysChart" width="600" height="150" style="margin-top:12px;"></canvas>
+        </div>
+
+        <!-- Gamepad Panel -->
+        <div class="panel" id="panel-gamepad">
+            <h2>🎮 Gamepad</h2>
+            <div class="toggle-row">
+                <label>🖐️ Manual Mode</label>
+                <div style="display:flex;align-items:center;">
+                    <input type="checkbox" id="manualModeToggle" class="toggle-switch" onchange="toggleManualMode()">
+                    <span id="manualModeStatus" class="toggle-status off">OFF</span>
+                </div>
+            </div>
+            <div class="toggle-row">
+                <label>🎮 Gamepad Input</label>
+                <div style="display:flex;align-items:center;">
+                    <input type="checkbox" id="gamepadToggle" class="toggle-switch" onchange="toggleGamepad()">
+                    <span id="gamepadStatus" class="toggle-status off">OFF</span>
+                </div>
+            </div>
+            <div id="gpContent">
+                <div class="gp-select">
+                    <label>Controller</label>
+                    <select id="gpSelect" onchange="onGamepadSelected()">
+                        <option value="">-- No controller --</option>
+                    </select>
+                </div>
+                <div class="gp-status">
+                    <div id="gpIndicator" class="gp-indicator"></div>
+                    <span id="gpName" class="gp-name">No controller connected</span>
+                </div>
+                <div class="gp-axes" id="gpAxes">
+                <div class="gp-axis">
+                    <label>L-Y</label>
+                    <div class="gp-bar"><div class="gp-bar-center"></div><div id="gpBar0" class="gp-bar-fill" style="left:50%;width:0%"></div></div>
+                </div>
+                <div class="gp-axis">
+                    <label>L-X</label>
+                    <div class="gp-bar"><div class="gp-bar-center"></div><div id="gpBar1" class="gp-bar-fill" style="left:50%;width:0%"></div></div>
+                </div>
+                <div class="gp-axis">
+                    <label>R-Y</label>
+                    <div class="gp-bar"><div class="gp-bar-center"></div><div id="gpBar2" class="gp-bar-fill" style="left:50%;width:0%"></div></div>
+                </div>
+                <div class="gp-axis">
+                    <label>R-X</label>
+                    <div class="gp-bar"><div class="gp-bar-center"></div><div id="gpBar3" class="gp-bar-fill" style="left:50%;width:0%"></div></div>
+                </div>
+            </div>
+            <div class="gp-buttons" id="gpButtons"></div>
+            <div class="gp-output">
+                <div class="data-cell"><label>Cmd Linear</label><div class="value" id="gpCmdLinear">0.000</div></div>
+                <div class="data-cell"><label>Cmd Angular</label><div class="value" id="gpCmdAngular">0.000</div></div>
+            </div>
+                <div class="gp-help">
+                    <kbd>L Stick Y</kbd>: Forward/Back &nbsp;|&nbsp; <kbd>L Stick X</kbd>: Rotate &nbsp;|&nbsp; <kbd>B</kbd> or <kbd>RB</kbd>: Stop<br>
+                    Max Linear: <span id="gpMaxLin">0.3</span> m/s &nbsp;|&nbsp; Max Angular: <span id="gpMaxAng">1.0</span> rad/s &nbsp;|&nbsp; Deadzone: 0.15
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="panel full-width" id="panel-controls">
+            <h2>🎮 Test Controls</h2>
+            <div class="controls-grid">
+                <div class="control-section">
+                    <h3>Calibration Actions</h3>
+                    <div class="btn-row">
+                        <button class="success" onclick="calibrate('forward', 0.1, 10)">Forward 1m</button>
+                        <button class="warning" onclick="calibrate('backward', 0.1, 10)">Backward 1m</button>
+                        <button onclick="calibrate('rotate_left', 0.314, 5)">Turn Left 90°</button>
+                        <button onclick="calibrate('rotate_right', 0.314, 5)">Turn Right 90°</button>
+                        <button class="stop" onclick="stopRobot()">🛑 ESTOP</button>
+                    </div>
+                    <div class="input-group">
+                        <label>Linear (m/s):</label>
+                        <input type="number" id="linearSpeed" value="0.1" step="0.05" min="-1" max="1">
+                        <label>Angular (rad/s):</label>
+                        <input type="number" id="angularSpeed" value="0" step="0.1" min="-3.14" max="3.14">
+                        <label>Time (s):</label>
+                        <input type="number" id="duration" value="5" step="1" min="1" max="60">
+                        <button onclick="customMove()">Run</button>
+                        <button onclick="setContinuous()">Hold</button>
+                        <button class="stop" onclick="stopRobot()">Stop</button>
+                    </div>
+                </div>
+                <div class="control-section">
+                    <h3>Manual D-Pad</h3>
+                    <div class="d-pad">
+                        <div></div>
+                        <button onmousedown="startDPad(0.1, 0)" onmouseup="stopRobot()" onmouseleave="stopRobot()">▲</button>
+                        <div></div>
+                        <button onmousedown="startDPad(0, 0.5)" onmouseup="stopRobot()" onmouseleave="stopRobot()">↺</button>
+                        <button class="stop" onmousedown="stopRobot()" onmouseup="stopRobot()">●</button>
+                        <button onmousedown="startDPad(0, -0.5)" onmouseup="stopRobot()" onmouseleave="stopRobot()">↻</button>
+                        <div></div>
+                        <button onmousedown="startDPad(-0.1, 0)" onmouseup="stopRobot()" onmouseleave="stopRobot()">▼</button>
+                        <div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Odometry Calibration Panel -->
+        <div class="panel full-width" id="panel-calibration">
+            <h2>📏 Odometry Calibration</h2>
+            <div class="calibration-grid">
+                <div class="cal-section">
+                    <h3>Current Parameters</h3>
+                    <div class="data-cell"><label>Wheel Radius</label><div class="value" id="calCurrentRadius">--</div></div>
+                    <div class="data-cell"><label>Wheel Separation</label><div class="value" id="calCurrentSep">--</div></div>
+                    <button onclick="fetchCalibrationParams()">🔄 Refresh Params</button>
+                </div>
+                <div class="cal-section">
+                    <h3>Linear Calibration (Wheel Radius)</h3>
+                    <p>1. Place robot on flat floor. Click <b>Start</b>.<br>
+                       2. Robot moves forward 1m.<br>
+                       3. Measure actual distance and enter it below.<br>
+                       4. Click <b>Calculate</b> to get new radius.</p>
+                    <div class="btn-row">
+                        <button class="success" onclick="startLinearCal()">▶️ Start Forward 1m</button>
+                        <button class="stop" onclick="stopLinearCal()">⏹️ Stop</button>
+                    </div>
+                    <div class="input-group">
+                        <label>Measured Distance (m):</label>
+                        <input type="number" id="calMeasuredDist" value="1.0" step="0.001" min="0">
+                        <label>Target Distance (m):</label>
+                        <input type="number" id="calTargetDist" value="1.0" step="0.1" min="0">
+                        <button onclick="calculateRadius()">📐 Calculate New Radius</button>
+                    </div>
+                    <div class="data-cell" id="calRadiusResult" style="display:none;">
+                        <label>Proposed Wheel Radius</label>
+                        <div class="value" id="calNewRadius">--</div>
+                    </div>
+                </div>
+                <div class="cal-section">
+                    <h3>Rotation Calibration (Wheel Separation)</h3>
+                    <p>1. Place robot and mark orientation. Click <b>Start</b>.<br>
+                       2. Robot rotates 360° in place.<br>
+                       3. Check if it returned to start orientation.<br>
+                       4. Enter actual rotation and click <b>Calculate</b>.</p>
+                    <div class="btn-row">
+                        <button class="success" onclick="startRotationCal()">▶️ Start Rotate 360°</button>
+                        <button class="info" onclick="startLidarRotationCal()">📡 LiDAR Rotate 360°</button>
+                        <button class="stop" onclick="stopRotationCal()">⏹️ Stop</button>
+                    </div>
+                    <p style="font-size:11px;color:var(--on-primary-mute);margin-top:4px;">
+                        📡 LiDAR mode: place a flat wall/board ~0.5-2m in front of the robot. The robot will auto-capture the true rotation angle from LiDAR scan before/after rotation.
+                    </p>
+                    <div class="input-group">
+                        <label>Measured Rotation (deg):</label>
+                        <input type="number" id="calMeasuredRot" value="360.0" step="0.1">
+                        <label>Target Rotation (deg):</label>
+                        <input type="number" id="calTargetRot" value="360.0" step="0.1">
+                        <button onclick="calculateSeparation()">📐 Calculate New Separation</button>
+                    </div>
+                    <div class="data-cell" id="calSepResult" style="display:none;">
+                        <label>Proposed Wheel Separation</label>
+                        <div class="value" id="calNewSep">--</div>
+                    </div>
+                </div>
+                <div class="cal-section">
+                    <h3>Live Measurement</h3>
+                    <div class="data-cell"><label>Status</label><div class="value" id="calStatus">Idle</div></div>
+                    <div class="data-cell"><label>Distance Traveled</label><div class="value" id="calLiveDist">0.000 m</div></div>
+                    <div class="data-cell"><label>Rotation</label><div class="value" id="calLiveRot">0.00°</div></div>
+                    <div class="data-cell"><label>Duration</label><div class="value" id="calLiveTime">0.0 s</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Raw Data Panel -->
+        <div class="panel full-width" id="panel-raw">
+            <h2>📋 Raw Topic Data</h2>
+            <div class="raw-data-grid">
+                <div class="raw-block">
+                    <h4>CPU / Memory</h4>
+                    <pre id="rawSystem">Waiting for data...</pre>
+                </div>
+                <div class="raw-block">
+                    <h4>Encoders</h4>
+                    <pre id="rawEncoder">Waiting for data...</pre>
+                </div>
+            </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
