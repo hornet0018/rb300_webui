@@ -1,5 +1,3 @@
-import './style.css'
-
 // ===== ROS Connection =====
 const ros = new ROSLIB.Ros({ url: 'ws://' + location.hostname + ':9090' })
 const statusBadge = document.getElementById('statusBadge')
