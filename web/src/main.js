@@ -59,7 +59,7 @@ try {
     saveMapClient = new ROSLIB.Service({ ros, name: SAVE_MAP_SERVICE, serviceType: 'slam_toolbox/srv/SaveMap' })
 } catch (e) { console.warn('SaveMap service not available:', e) }
 
-let mappingActive = false
+
 
 let cmdInterval = null
 let encoderL = 0, encoderR = 0
@@ -85,21 +85,11 @@ function setEstopActive() {
 
 function startMapping() {
     slamCommandTopic.publish(new ROSLIB.Message({ data: 'start' }))
-    mappingActive = true
-    if (document.getElementById('btnStartMapping')) {
-        document.getElementById('btnStartMapping').disabled = true
-        document.getElementById('btnStopMapping').disabled = false
-    }
     console.log('Published "start" to ' + SLAM_COMMAND_TOPIC)
 }
 
 function stopMapping() {
     slamCommandTopic.publish(new ROSLIB.Message({ data: 'stop' }))
-    mappingActive = false
-    if (document.getElementById('btnStartMapping')) {
-        document.getElementById('btnStartMapping').disabled = false
-        document.getElementById('btnStopMapping').disabled = true
-    }
     console.log('Published "stop" to ' + SLAM_COMMAND_TOPIC)
 }
 

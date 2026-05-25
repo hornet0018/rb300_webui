@@ -51,7 +51,7 @@ try {
     serializeClient = new ROSLIB.Service({ ros, name: SERIALIZE_SERVICE, serviceType: 'slam_toolbox/srv/SerializePoseGraph' })
 } catch (e) { console.warn('SerializePoseGraph service not available:', e) }
 
-let mappingActive = false
+
 let cmdInterval = null
 
 function publishCmdVel(linear, angular) {
@@ -472,17 +472,11 @@ odomTopic.subscribe(function(msg) {
 // ===== Mapping Commands =====
 function startMapping() {
     slamCommandTopic.publish(new ROSLIB.Message({ data: 'start' }))
-    mappingActive = true
-    document.getElementById('btnStartMapping').disabled = true
-    document.getElementById('btnStopMapping').disabled = false
     console.log('Published "start" to ' + SLAM_COMMAND_TOPIC)
 }
 
 function stopMapping() {
     slamCommandTopic.publish(new ROSLIB.Message({ data: 'stop' }))
-    mappingActive = false
-    document.getElementById('btnStartMapping').disabled = false
-    document.getElementById('btnStopMapping').disabled = true
     console.log('Published "stop" to ' + SLAM_COMMAND_TOPIC)
 }
 
