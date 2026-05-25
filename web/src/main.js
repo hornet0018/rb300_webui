@@ -604,12 +604,40 @@ function drawPathGrid() {
     pathCtx.fillRect(0, 0, pathCanvas.width, pathCanvas.height)
     pathCtx.strokeStyle = '#2a2a3e'
     pathCtx.lineWidth = 1
-    for (let x = pathOffsetX % 50; x < pathCanvas.width; x += 50) {
+    pathCtx.fillStyle = '#6c757d'
+    pathCtx.font = '10px sans-serif'
+
+    // Choose grid step in meters so labels are readable
+    let stepM = 1
+    if (pathScale >= 120) stepM = 0.5
+    else if (pathScale >= 60) stepM = 1
+    else if (pathScale >= 30) stepM = 2
+    else if (pathScale >= 15) stepM = 5
+    else stepM = 10
+
+    const stepPx = stepM * pathScale
+
+    // Vertical grid lines + X-axis labels
+    pathCtx.textAlign = 'center'
+    pathCtx.textBaseline = 'top'
+    const startX = Math.floor((0 - pathOffsetX) / stepPx) * stepPx + pathOffsetX
+    for (let x = startX; x < pathCanvas.width; x += stepPx) {
         pathCtx.beginPath(); pathCtx.moveTo(x, 0); pathCtx.lineTo(x, pathCanvas.height); pathCtx.stroke()
+        const m = ((x - pathOffsetX) / pathScale).toFixed(stepM < 1 ? 1 : 0)
+        pathCtx.fillText(m + 'm', x, pathOffsetY + 4)
     }
-    for (let y = pathOffsetY % 50; y < pathCanvas.height; y += 50) {
+
+    // Horizontal grid lines + Y-axis labels
+    pathCtx.textAlign = 'right'
+    pathCtx.textBaseline = 'middle'
+    const startY = Math.floor((0 - pathOffsetY) / stepPx) * stepPx + pathOffsetY
+    for (let y = startY; y < pathCanvas.height; y += stepPx) {
         pathCtx.beginPath(); pathCtx.moveTo(0, y); pathCtx.lineTo(pathCanvas.width, y); pathCtx.stroke()
+        const m = ((pathOffsetY - y) / pathScale).toFixed(stepM < 1 ? 1 : 0)
+        pathCtx.fillText(m + 'm', pathOffsetX - 4, y)
     }
+
+    // Axes
     pathCtx.strokeStyle = '#4a4a5e'
     pathCtx.lineWidth = 2
     pathCtx.beginPath(); pathCtx.moveTo(0, pathOffsetY); pathCtx.lineTo(pathCanvas.width, pathOffsetY); pathCtx.stroke()
