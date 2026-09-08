@@ -36,5 +36,7 @@ options = {
 }
 
 -- IMU なし・オドメトリあり (ESP32 エンコーダ)
+MAP_BUILDER.use_trajectory_builder_2d = true
 TRAJECTORY_BUILDER_2D.use_imu_data = false
-TRAJECTORY_BUILDER_2D.use_odometry = true
+
+return options
