@@ -29,6 +29,12 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}
 )
 
+# Install Cartographer configuration
+install(DIRECTORY
+  config
+  DESTINATION share/${PROJECT_NAME}
+)
+
 # Install scripts
 install(PROGRAMS
   scripts/test_odom.py

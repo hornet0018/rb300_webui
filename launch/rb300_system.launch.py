@@ -95,6 +95,8 @@ def generate_launch_description():
         parameters=[{
             'slam_params_file': slam_config_file,
             'command_topic': '/rb300_webui/slam_command',
+            'slam_mode': LaunchConfiguration('slam_mode'),
+            'map_dir': LaunchConfiguration('map_dir'),
         }],
     )
 
@@ -176,6 +178,16 @@ def generate_launch_description():
             'invert_motor_r',
             default_value='true',
             description='Invert right motor rotation'
+        ),
+        DeclareLaunchArgument(
+            'slam_mode',
+            default_value='cartographer',
+            description='Scan matcher: slam_toolbox or cartographer'
+        ),
+        DeclareLaunchArgument(
+            'map_dir',
+            default_value='~/.rb300/maps',
+            description='Directory where saved maps (pbstream / pgm) are stored'
         ),
         # Launch nodes
         rplidar_launch,

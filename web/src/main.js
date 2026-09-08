@@ -46,16 +46,15 @@ const memPercentTopic = new ROSLIB.Topic({
 
 // ===== SLAM Control Topics & Services =====
 const SLAM_COMMAND_TOPIC = '/rb300_webui/slam_command'   // std_msgs/String: "start" | "stop"
-const SAVE_MAP_SERVICE   = '/slam_toolbox/save_map'       // slam_toolbox/srv/SaveMap
+const MAP_COMMAND_TOPIC  = '/rb300_webui/map_command'    // std_msgs/String: JSON {"action": ...}
 
 const slamCommandTopic = new ROSLIB.Topic({
     ros, name: SLAM_COMMAND_TOPIC, messageType: 'std_msgs/msg/String'
 })
 
-let saveMapClient = null
-try {
-    saveMapClient = new ROSLIB.Service({ ros, name: SAVE_MAP_SERVICE, serviceType: 'slam_toolbox/srv/SaveMap' })
-} catch (e) { console.warn('SaveMap service not available:', e) }
+const mapCommandTopic = new ROSLIB.Topic({
+    ros, name: MAP_COMMAND_TOPIC, messageType: 'std_msgs/msg/String'
+})
 
 
 
@@ -92,22 +91,13 @@ function stopMapping() {
 }
 
 function saveMap() {
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
-    const mapPath = '/home/sunrise/ros2_ws/maps/map_' + timestamp
-
-    if (saveMapClient) {
-        const request = new ROSLIB.ServiceRequest({ name: { data: mapPath } })
-        saveMapClient.callService(request, (result) => {
-            console.log('Map saved via service:', result)
-            alert('Map saved to: ' + mapPath)
-        }, (error) => {
-            console.error('SaveMap service failed:', error)
-            alert('SaveMap service failed: ' + error)
-        })
-        return
-    }
-
-    alert('SaveMap service not configured. Check SLAM_COMMAND_TOPIC and SAVE_MAP_SERVICE settings.')
+    const nameInput = document.getElementById('mapNameInput')
+    const name = nameInput ? nameInput.value.trim() : ''
+    if (nameInput) nameInput.value = ''
+    mapCommandTopic.publish(new ROSLIB.Message({
+        data: JSON.stringify({ action: 'save', name })
+    }))
+    console.log('Published map_command save:', name)
 }
 
 function calibrate(type, value, duration) {

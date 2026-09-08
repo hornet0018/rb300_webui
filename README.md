@@ -206,17 +206,16 @@ ros2 run rb300_webui system_monitor
 |--------|-------------------|-----|------|
 | **▶️ Start Mapping** | `/rb300_webui/slam_command` | `std_msgs/String` | `"start"` を publish |
 | **⏹️ Stop Mapping** | `/rb300_webui/slam_command` | `std_msgs/String` | `"stop"` を publish |
-| **💾 Save Map** | `/slam_toolbox/save_map` | Service | 地図を PGM/YAML で保存 |
+| **💾 Save Map** | `/rb300_webui/map_command` | `std_msgs/String` | `{"action":"save","name":"..."}` を publish |
+| **🔄 Refresh / 📍 Select / ⏹️ Stop Localization** | `/rb300_webui/map_command` | `std_msgs/String` | `{"action":"list"}` / `{"action":"select","name":"..."}` / `{"action":"stop"}` |
+| 結果通知 | `/rb300_webui/map_status` | `std_msgs/String` | JSON(maps / localization / message) |
 
-### 設定変更
+### 地図保存の仕組み (Cartographer)
 
-お使いの SLAM パッケージに合わせて、`web/src/dashboard.js`（または `main.js`）の先頭を編集してください：
-
-```javascript
-const SLAM_COMMAND_TOPIC = '/rb300_webui/slam_command'  // マッピング開始/停止用
-const SAVE_MAP_SERVICE   = '/slam_toolbox/save_map'      // slam_toolbox 用
-// const SAVE_MAP_SERVICE = '/map_server/save_map'        // nav2_map_server 用
-```
+- 保存: `rb300_nav` の `slam_controller.py` が `/write_state`(cartographer_ros_msgs/srv/WriteState)を呼び、`~/.rb300/maps/<名前>.pbstream` を保存。あわせて `/map`(OccupancyGrid)から表示用 PGM/YAML も生成します。
+- 選択: 保存済み pbstream を `-load_state_filename` で読み込み、Cartographer によるローカライゼーションを開始します(ロボットはマッピング時の開始位置付近で起動してください)。
+- スキャンマッチングの切替: `rb300_all.launch.py` / `rb300_system.launch.py` の `slam_mode:=cartographer`(既定)または `slam_toolbox`。
+- Cartographer 設定: `config/rb300_2d.lua`(IMU なし・オドメトリあり)。
 
 ### 受信側ノードの例
 

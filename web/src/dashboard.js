@@ -32,22 +32,85 @@ const batteryTopic = new ROSLIB.Topic({
 // ===== SLAM Control Topics & Services =====
 // Adjust these to match your SLAM package (slam_toolbox, cartographer, gmapping, etc.)
 const SLAM_COMMAND_TOPIC = '/rb300_webui/slam_command'   // std_msgs/String: "start" | "stop"
-const SAVE_MAP_SERVICE   = '/slam_toolbox/save_map'       // slam_toolbox/srv/SaveMap
-const SERIALIZE_SERVICE  = '/slam_toolbox/serialize_map' // slam_toolbox/srv/SerializePoseGraph
+const MAP_COMMAND_TOPIC  = '/rb300_webui/map_command'    // std_msgs/String: JSON {"action": ...}
+const MAP_STATUS_TOPIC   = '/rb300_webui/map_status'     // std_msgs/String: JSON result
 
 const slamCommandTopic = new ROSLIB.Topic({
     ros, name: SLAM_COMMAND_TOPIC, messageType: 'std_msgs/msg/String'
 })
 
-let saveMapClient = null
-try {
-    saveMapClient = new ROSLIB.Service({ ros, name: SAVE_MAP_SERVICE, serviceType: 'slam_toolbox/srv/SaveMap' })
-} catch (e) { console.warn('SaveMap service not available:', e) }
+const mapCommandTopic = new ROSLIB.Topic({
+    ros, name: MAP_COMMAND_TOPIC, messageType: 'std_msgs/msg/String'
+})
 
-let serializeClient = null
-try {
-    serializeClient = new ROSLIB.Service({ ros, name: SERIALIZE_SERVICE, serviceType: 'slam_toolbox/srv/SerializePoseGraph' })
-} catch (e) { console.warn('SerializePoseGraph service not available:', e) }
+const mapStatusTopic = new ROSLIB.Topic({
+    ros, name: MAP_STATUS_TOPIC, messageType: 'std_msgs/msg/String'
+})
+
+let currentMaps = []
+let currentLocalization = { running: false, map_name: null }
+
+mapStatusTopic.subscribe((msg) => {
+    let data = {}
+    try { data = JSON.parse(msg.data) } catch (e) { console.warn('map_status parse error:', e); return }
+    if (data.maps) currentMaps = data.maps
+    if (data.localization) currentLocalization = data.localization
+    updateMapUI(data)
+})
+
+function updateMapUI(data) {
+    const msgEl = document.getElementById('mapStatusMsg')
+    if (msgEl) {
+        if (data.message) {
+            msgEl.textContent = data.message
+            msgEl.style.color = data.ok ? '#4caf50' : '#ef5350'
+        } else {
+            msgEl.textContent = ''
+        }
+    }
+
+    // Map list
+    const listEl = document.getElementById('mapList')
+    if (listEl) {
+        if (currentMaps.length === 0) {
+            listEl.innerHTML = '<div style="font-size:0.85em;color:#888;">No saved maps</div>'
+        } else {
+            listEl.innerHTML = currentMaps.map((m) => {
+                const isActive = currentLocalization.running && currentLocalization.map_name === m.name
+                const meta = [
+                    m.saved_at || '',
+                    m.resolution != null ? m.resolution + 'm' : '',
+                    m.width != null && m.height != null ? m.width + 'x' + m.height : '',
+                ].filter(Boolean).join(' / ')
+                const btnLabel = isActive ? '↻ Restart' : '📍 Select'
+                const btnStyle = isActive
+                    ? 'background:#28a745;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;'
+                    : 'background:#2196f3;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;'
+                return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #333;">'
+                    + '<span style="flex:1;font-size:0.85em;">' + m.name
+                    + (isActive ? ' <span style="color:#4caf50;">(active)</span>' : '')
+                    + '</span>'
+                    + '<span style="font-size:0.75em;color:#888;">' + meta + '</span>'
+                    + '<button onclick="selectMap(\'' + m.name.replace(/'/g, "\\'") + '\')" style="' + btnStyle + '">' + btnLabel + '</button>'
+                    + '</div>'
+            }).join('')
+        }
+    }
+
+    // Localization status
+    const locRow = document.getElementById('localizationRow')
+    const locState = document.getElementById('localizationState')
+    if (locRow && locState) {
+        if (currentLocalization.running) {
+            locRow.style.display = 'flex'
+            locRow.style.alignItems = 'center'
+            locRow.style.gap = '8px'
+            locState.textContent = 'Localization running: ' + (currentLocalization.map_name || '(unknown)')
+        } else {
+            locRow.style.display = 'none'
+        }
+    }
+}
 
 
 let cmdInterval = null
@@ -479,38 +542,34 @@ function stopMapping() {
 }
 
 function saveMap() {
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
-    const mapPath = '/home/sunrise/ros2_ws/maps/map_' + timestamp
-
-    // 1) Try service-based save (slam_toolbox)
-    if (saveMapClient) {
-        const request = new ROSLIB.ServiceRequest({ name: { data: mapPath } })
-        saveMapClient.callService(request, (result) => {
-            console.log('Map saved via service:', result)
-            alert('Map saved to: ' + mapPath)
-        }, (error) => {
-            console.error('SaveMap service failed:', error)
-            // Fallback to canvas export
-            exportMapImage(timestamp)
-        })
-        return
-    }
-
-    // 2) Fallback: export current map canvas as PNG
-    exportMapImage(timestamp)
+    const nameInput = document.getElementById('mapNameInput')
+    const name = nameInput ? nameInput.value.trim() : ''
+    if (nameInput) nameInput.value = ''
+    mapCommandTopic.publish(new ROSLIB.Message({
+        data: JSON.stringify({ action: 'save', name })
+    }))
+    console.log('Published map_command save:', name)
 }
 
-function exportMapImage(filename) {
-    if (!currentMap) {
-        alert('No map received yet. Cannot export.')
-        return
-    }
-    const link = document.createElement('a')
-    link.download = 'map_' + filename + '.png'
-    link.href = mapCanvas.toDataURL('image/png')
-    link.click()
-    console.log('Exported map image:', link.download)
-    alert('Map image exported: ' + link.download)
+function refreshMapList() {
+    mapCommandTopic.publish(new ROSLIB.Message({
+        data: JSON.stringify({ action: 'list' })
+    }))
+    console.log('Published map_command list')
+}
+
+function selectMap(name) {
+    mapCommandTopic.publish(new ROSLIB.Message({
+        data: JSON.stringify({ action: 'select', name })
+    }))
+    console.log('Published map_command select:', name)
+}
+
+function stopLocalization() {
+    mapCommandTopic.publish(new ROSLIB.Message({
+        data: JSON.stringify({ action: 'stop' })
+    }))
+    console.log('Published map_command stop')
 }
 
 // ===== Battery Voltage =====
@@ -530,6 +589,9 @@ document.getElementById('headerVel').textContent = '0.00 / 0.00'
 window.startMapping = startMapping
 window.stopMapping = stopMapping
 window.saveMap = saveMap
+window.refreshMapList = refreshMapList
+window.selectMap = selectMap
+window.stopLocalization = stopLocalization
 window.clearMapOverlay = clearMapOverlay
 window.calibrate = calibrate
 window.stopRobot = stopRobot
